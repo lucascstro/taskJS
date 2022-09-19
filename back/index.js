@@ -59,14 +59,14 @@ app.get("/task/:id", async (req, res) => {
 app.get("/tasks/status", async (req, res) => {
   try {
     var retStatus = [
-      {"id":"1", "status" : "cadastro"}, 
-      {"id":"2", "status" : "emExecucao"},
-      {"id":"3", "status" : "finalizado"},
-      {"id":"4", "status" : "emAtraso"},
-      {"id":"5", "status" : "cancelado"}
+      { "id": "1", "status": "cadastro" },
+      { "id": "2", "status": "emExecucao" },
+      { "id": "3", "status": "finalizado" },
+      { "id": "4", "status": "emAtraso" },
+      { "id": "5", "status": "cancelado" }
     ];
-      res.json(retStatus);
-      res.statusCode = 200;
+    res.json(retStatus);
+    res.statusCode = 200;
 
   } catch (error) {
     res.send("Falha ao tentar recuperar os dados da task. Erro: " + error);
@@ -310,6 +310,15 @@ app.post("/task/alterarStatus/:id/:status", async (req, res) => {
     } else {
       res.sendStatus(400);
     }
+  } catch (erro) {
+    res.send(erro);
+  }
+});
+
+//rota api teste
+app.get("/tasks/ping", async (req, res) => {
+  try {
+    res.statusCode = 200;
   } catch (erro) {
     res.send(erro);
   }
