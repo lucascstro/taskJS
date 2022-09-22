@@ -3,8 +3,8 @@ const Task = require("./database/Task");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const express = require("express");
+
 const app = express();
-const Op = require("sequelize").Op;
 const EnumStatus = require("./enum/enum");
 
 //inicia base de dados

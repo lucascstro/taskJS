@@ -43,3 +43,5 @@ Taks.sync({ force: false })
 
         console.log("Falha ao realizar sincronização.");
     })
+
+module.exports = Taks;
