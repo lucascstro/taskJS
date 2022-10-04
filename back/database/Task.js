@@ -31,13 +31,11 @@ const Taks = connection.define("tasks", {
         type: Sequelize.TEXT,
         allowNull: false
     },
-
-
 });
 
 Taks.sync({ force: false })
     .then(() => {
-        console.log("Sincronização realizada.");
+        console.log("Sincronização realizada - Task");
     })
     .catch(() => {
 

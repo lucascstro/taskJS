@@ -1,11 +1,14 @@
 const connection = require("./database/database");
 const Task = require("./database/Task");
+const configuracaoGeral = require("./database/configuracaoGeral");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const express = require("express");
+const { auth, requireScopes } = require("express-oauth2-jwt-bearer");
 
 const app = express();
 const EnumStatus = require("./enum/enum");
+const Usuarios = require("./database/usuarios");
 
 //inicia base de dados
 connection.authenticate().catch((err) => {
@@ -15,6 +18,8 @@ connection.authenticate().catch((err) => {
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
+const checkJwt = auth({ audience: 'taskApi', issuerBaseURL: "http://localhost:5500" });
 
 //api
 //lista todas as tasks existentes
@@ -312,6 +317,75 @@ app.post("/task/alterarStatus/:id/:status", async (req, res) => {
     }
   } catch (erro) {
     res.send(erro);
+  }
+});
+
+//criacao de usuario
+app.post("/usuario/criarUsuario", async (req, res) => {
+  try {
+    var {
+      user,
+      password
+    } = req.body;
+
+    Usuarios.create({
+      user: user,
+      password: password,
+      ultimoLogin: null,
+      logado: false
+    }).then(() => {
+      res.sendStatus(200);
+    }).catch((erro) => {
+      res.send(erro);
+      res.statusCode = 400;
+    })
+  } catch (error) {
+    res.send(error);
+    res.statusCode = 400;
+  }
+});
+
+app.get("/usuario", async (req, res) => {
+  try {
+    var todosUsuarios = await Usuarios.findAll();
+    res.send(todosUsuarios);
+    res.statusCode = 200;
+  } catch (error) {
+    res.send(error);
+  }
+});
+
+app.get("/usuario/logon", async (req, res) => {
+  try {
+    var {
+      user,
+      password
+    } = req.body;
+
+    var retUsuario = await Usuarios.findOne({
+      where: { user: user, password: password }
+    });
+
+    if (retUsuario != null && retUsuario != undefined) {
+      console.log(retUsuario.logado);
+      Usuarios.update({
+        ultimoLogin: new Date().toLocaleString(),
+        logado: true
+      },
+        { where: { id: retUsuario.id } })
+        .then(() => {
+          res.send(200);
+        }).catch((erro) => {
+          res.send(erro);
+        })
+    }
+    else {
+      res.statusCode = 401;
+    }
+
+  } catch (error) {
+    res.send(error);
+    res.statusCode = 400;
   }
 });
 
