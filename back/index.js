@@ -22,6 +22,16 @@ app.use(bodyParser.json());
 const checkJwt = auth({ audience: 'taskApi', issuerBaseURL: "http://localhost:5500" });
 
 //api
+//teste api online
+app.get("/tasks/online", (req, res) => {
+  try {
+        res.json({mensagem: "Api online"});
+        res.statusCode = 200;
+  } catch (error) {
+    res.send("Falha ao tentar recuperar as tasks. Erro: " + error);
+  }
+});
+
 //lista todas as tasks existentes
 app.get("/tasks", (req, res) => {
   try {
@@ -60,15 +70,15 @@ app.get("/task/:id", async (req, res) => {
   }
 });
 
-//pega os stats
+//pega os status
 app.get("/tasks/status", async (req, res) => {
   try {
     var retStatus = [
-      { "id": "1", "status": "cadastro" },
-      { "id": "2", "status": "emExecucao" },
-      { "id": "3", "status": "finalizado" },
-      { "id": "4", "status": "emAtraso" },
-      { "id": "5", "status": "cancelado" }
+      { "id": "1", "status": "Cadastrada" },
+      { "id": "2", "status": "Em execução" },
+      { "id": "3", "status": "Finalizada" },
+      { "id": "4", "status": "Atrasada" },
+      { "id": "5", "status": "Cancelada" }
     ];
     res.json(retStatus);
     res.statusCode = 200;
@@ -112,10 +122,11 @@ app.post("/task", (req, res) => {
 });
 
 //Atualiza uma task criada
-app.put("/task", (req, res) => {
+app.post("/task/atualizar", (req, res) => {
+  console.log('atualizar')
   try {
     var {
-      id: id,
+      id,
       titulo,
       descricao,
       status,
@@ -124,7 +135,7 @@ app.put("/task", (req, res) => {
       dataMaximaExecutar,
       dataUltimaAlteracao,
     } = req.body;
-
+    
     Task.update(
       {
         titulo: titulo,
@@ -144,11 +155,12 @@ app.put("/task", (req, res) => {
         res.send(error);
       });
   } catch (erro) {
+    console.log('catch erro')
     res.send("Falha ao tentar atualizar a nova task. Erro: " + erro);
   }
 });
 
-//deleta uma tabela
+//deleta uma task
 app.delete("/task/:id", (req, res) => {
   try {
     if (isNaN(req.params.id)) {
@@ -168,7 +180,36 @@ app.delete("/task/:id", (req, res) => {
   }
 });
 
-//pegar somente as tarefas pendentes
+//deleta uma task
+app.post("/task/cancelar/:id", (req, res) => {
+  try {
+    var {
+      id,
+      status,
+      dataFinalizada,
+      dataUltimaAlteracao,
+    } = req.body;
+
+    Task.update(
+      {
+        status: status,
+        dataFinalizada: dataFinalizada,
+        dataUltimaAlteracao: dataUltimaAlteracao,
+      },
+      { where: { id: id } }
+    )
+      .then(() => {
+        res.sendStatus(200);
+      })
+      .catch((error) => {
+        res.send(error);
+      });
+  } catch (erro) {
+    res.send("Falha ao tentar atualizar a nova task. Erro: " + erro);
+  }
+});
+
+//pegar somente as tarefas pendentes - a fazer
 app.get("/tasks/pendentes", async (req, res) => {
   try {
     var ret = await Task.findAll({
@@ -206,7 +247,7 @@ app.get("/tasks/naofinalizadas", async (req, res) => {
   }
 });
 
-//pegar somente as tarefas em execucao
+//pegar somente as tarefas em execucao - fazendo
 app.get("/tasks/emExecucao", async (req, res) => {
   try {
     var ret = await Task.findAll({
@@ -225,7 +266,7 @@ app.get("/tasks/emExecucao", async (req, res) => {
   }
 });
 
-//pegar somente as tarefas finalizadas
+//pegar somente as tarefas finalizadas - feitas
 app.get("/tasks/finalizadas", async (req, res) => {
   try {
     var ret = await Task.findAll({
@@ -306,7 +347,6 @@ app.post("/task/alterarStatus/:id/:status", async (req, res) => {
       var ret = await Task.update(objeto, {
         where: { id: id },
       });
-      console.log(ret);
       if (ret != undefined) {
         res.sendStatus(200);
       } else {
@@ -399,5 +439,5 @@ app.get("/tasks/ping", async (req, res) => {
 });
 
 app.listen(5500, () => {
-  console.log("----Api inicializada---");
+  console.log("----Api inicializada em "+ new Date(Date.now()).toLocaleString() +" ---");
 });
