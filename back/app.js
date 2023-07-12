@@ -6,27 +6,43 @@ const bodyParser = require("body-parser");
 const express = require("express");
 const { auth, requireScopes } = require("express-oauth2-jwt-bearer");
 
-const app = express();
 const EnumStatus = require("./enum/enum");
 const Usuarios = require("./database/usuarios");
+const { Op } = require('sequelize');
+const e = require("cors");
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
+const swaggerFile = require('./swagger_output.json');
 
 //inicia base de dados
 connection.authenticate().catch((err) => {
   console.log("Erro ao conectar a base de dados. Erro: " + err);
 });
 
+const app = express();
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
+const options = {
+  definition:{
+    openapi:'3.0.0',
+    info: {
+      title: 'Tasks Api',
+      version: '1.0.0'
+    }
+  },
+  apis:['./app.js']
+}
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile));
+
 const checkJwt = auth({ audience: 'taskApi', issuerBaseURL: "http://localhost:5500" });
 
 //api
-//teste api online
 app.get("/tasks/online", (req, res) => {
   try {
-        res.json({mensagem: "Api online"});
-        res.statusCode = 200;
+    res.sendStatus(200);
   } catch (error) {
     res.send("Falha ao tentar recuperar as tasks. Erro: " + error);
   }
@@ -135,7 +151,7 @@ app.post("/task/atualizar", (req, res) => {
       dataMaximaExecutar,
       dataUltimaAlteracao,
     } = req.body;
-    
+
     Task.update(
       {
         titulo: titulo,
@@ -360,31 +376,6 @@ app.post("/task/alterarStatus/:id/:status", async (req, res) => {
   }
 });
 
-//criacao de usuario
-app.post("/usuario/criarUsuario", async (req, res) => {
-  try {
-    var {
-      user,
-      password
-    } = req.body;
-
-    Usuarios.create({
-      user: user,
-      password: password,
-      ultimoLogin: null,
-      logado: false
-    }).then(() => {
-      res.sendStatus(200);
-    }).catch((erro) => {
-      res.send(erro);
-      res.statusCode = 400;
-    })
-  } catch (error) {
-    res.send(error);
-    res.statusCode = 400;
-  }
-});
-
 app.get("/usuario", async (req, res) => {
   try {
     var todosUsuarios = await Usuarios.findAll();
@@ -395,42 +386,161 @@ app.get("/usuario", async (req, res) => {
   }
 });
 
-app.get("/usuario/logon", async (req, res) => {
+//criacao de usuario
+app.post("/usuario/criarUsuario", async (req, res) => {
+  try {
+    var {
+      user,
+      nomeUsuario,
+      email,
+      password
+    } = req.body;
+
+    if (user == '' || user == undefined || user == null ||
+      nomeUsuario == '' || nomeUsuario == undefined || nomeUsuario == null ||
+      email == '' || email == undefined || email == null ||
+      password == '' || password == undefined || password == null
+    ) {
+      res.statusCode = 400;
+      res.send("Todos os campos precisam ser preenchidos!");
+      return;
+    }
+
+    Usuarios.findAll({
+      where: {
+        [Op.or]: [
+          { user: user },
+          { email: email },
+          { nomeUsuario: nomeUsuario }
+        ]
+      }
+    }).then((value) => {
+      console.log('aaa' + value)
+      if (value.length >= 1) {
+        res.statusCode = 200;
+        res.send("Usuário já cadastrado!");
+        return;
+      }
+      else {
+        Usuarios.create({
+          user: user,
+          nomeUsuario, nomeUsuario,
+          email: email,
+          password: password,
+          ultimoLogin: null,
+          logado: false,
+        }).then(() => {
+          res.statusCode = 200;
+          res.send("Cadastro Realizado!");
+          return;
+        }).catch((error) => {
+          res.statusCode = 400;
+          res.send("Erro ao cadastrar usuário!");
+          return;
+        });
+      }
+    }).catch((error) => {
+      res.statusCode = 400;
+      res.send("Erro ao consultar Usuário!");
+      return;
+    });
+  } catch (error) {
+    res.statusCode = 400;
+    res.send(error);
+    return;
+  }
+});
+
+app.post("/usuario/logon", async (req, res) => {
   try {
     var {
       user,
       password
     } = req.body;
 
-    var retUsuario = await Usuarios.findOne({
-      where: { user: user, password: password }
-    });
-
-    if (retUsuario != null && retUsuario != undefined) {
-      console.log(retUsuario.logado);
-      Usuarios.update({
-        ultimoLogin: new Date().toLocaleString(),
-        logado: true
-      },
-        { where: { id: retUsuario.id } })
-        .then(() => {
-          res.send(200);
-        }).catch((erro) => {
-          res.send(erro);
-        })
+    if (user == undefined || user == '' || user == null ||
+      password == undefined || password == '' || password == null) {
+      res.send('Preencha todos os campos');
+      res.statusCode = 400;
+      return
     }
     else {
-      res.statusCode = 401;
+      Usuarios.findOne({
+        where: { user: 'Lucas Castro', password: 'abcd123' }
+      }).then((retUsuario) => {
+        if (retUsuario != undefined && retUsuario != null && retUsuario != '') {
+          Usuarios.update({
+            ultimoLogin: new Date().toLocaleString(),
+            logado: true
+          },
+            { where: { id: retUsuario.id } })
+            .then(() => {
+              res.send(200).json({
+                'nomeUsuario': retUsuario.nomeUsuario,
+                'idUsuario': retUsuario.id
+              });
+              return
+            }).catch((erro) => {
+              res.send(erro);
+              return
+            })
+        }
+        else {
+          res.send('Usuário ou senha invválido!');
+          res.statusCode = 401;
+          return
+        }
+      })
     }
-
   } catch (error) {
     res.send(error);
     res.statusCode = 400;
   }
 });
 
+app.post("/usuario/logout", async (req, res) => {
+  try {
+    var {
+      user
+    } = req.body;
+
+    if (user == undefined || user == '' || user == null) {
+      res.send('Preencha todos os campos');
+      res.statusCode = 400;
+      return;
+    }
+    else {
+      Usuarios.findOne({
+        where: { user: user }
+      }).then((retUsuario) => {
+        console.log(retUsuario);
+        if (retUsuario !== null) {
+          Usuarios.update({
+            ultimoLogin: new Date().toLocaleString(),
+            logado: false
+          },
+            { where: { id: retUsuario.id } })
+            .then(() => {
+              res.send('Logout feito');
+              res.statusCode = 200;
+              return;
+            })
+        } else {
+          res.send('Usuário não localizado');
+          res.statusCode = 200;
+          return;
+        }
+      })
+    }
+  } catch (error) {
+    res.send(error);
+    res.statusCode = 400;
+
+  }
+});
+
 //rota api teste
-app.get("/tasks/ping", async (req, res) => {
+app.get("/Settings/ping", async (req, res) => {
   try {
     res.statusCode = 200;
   } catch (erro) {
@@ -438,6 +548,24 @@ app.get("/tasks/ping", async (req, res) => {
   }
 });
 
-app.listen(5500, () => {
-  console.log("----Api inicializada em "+ new Date(Date.now()).toLocaleString() +" ---");
+//Api Info
+app.get("/Settings/details", async (req, res) => {
+  try {
+    res.json({
+      "Version": "1.0.2",
+      "Manager": "Lucas Castro",
+      "Contact": {
+        "Email": "lukas.castro@live.com",
+        "numberPhone": "+55 11 958541024"
+      },
+      "Descrition": " Api descrição"
+    });
+    res.statusCode = 200;
+  } catch (erro) {
+    res.send(erro);
+  }
 });
+
+app.listen(5500, () => {
+  console.log("----Api inicializada em " + new Date(Date.now()).toLocaleString() + " ---");
+}); 

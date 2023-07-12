@@ -5,10 +5,21 @@ const Usuarios = connection.define("usuarios", {
         type: Sequelize.TEXT,
         allowNull: false
     },
+    nomeUsuario:
+    {
+     type: Sequelize.TEXT,
+     allowNull: false,
+    },
     password: {
         type: Sequelize.TEXT,
         allowNull: false
     },
+    email:
+    {
+     type: Sequelize.TEXT,
+     allowNull: false,
+    },
+    
     ultimoLogin: {
         type: Sequelize.TEXT,
         allowNull: true
@@ -16,7 +27,11 @@ const Usuarios = connection.define("usuarios", {
     logado: {
         type: Sequelize.BOOLEAN,
         allowNull: false
-    }
+    },
+    tokenLogin: {
+        type: Sequelize.TEXT,
+        allowNull: true
+    },
 });
 
 Usuarios.sync({ force: false })
