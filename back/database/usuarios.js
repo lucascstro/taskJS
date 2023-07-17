@@ -1,5 +1,6 @@
 const Sequelize = require("sequelize");
-const connection = require("./database");
+const connection = require("../config/database");
+
 const Usuarios = connection.define("usuarios", {
     user: {
         type: Sequelize.TEXT,
@@ -19,7 +20,6 @@ const Usuarios = connection.define("usuarios", {
      type: Sequelize.TEXT,
      allowNull: false,
     },
-    
     ultimoLogin: {
         type: Sequelize.TEXT,
         allowNull: true

@@ -1,5 +1,5 @@
 const Sequelize = require("sequelize");
-const connection = require("./database");
+const connection = require("../config/database");
 const configuracaoGeral = connection.define("configuracaoGeral", {
     ultimoACesso: {
         type: Sequelize.TEXT,
