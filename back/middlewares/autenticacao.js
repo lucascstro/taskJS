@@ -26,7 +26,7 @@ const autenticacao = {
                 next();
             }
         });
-    },
+    }
 }
 
 module.exports = autenticacao;

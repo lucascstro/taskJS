@@ -5,17 +5,17 @@ const jwtSecret = 'segredo';
 
 const UsuarioControllers =
 {
-    //busca todos usuarios
-    usuario: async (res) => {
+    usuarios: async (res) => {
         try {
-            var todosUsuarios = await Usuarios.findAll();
-            res.send(todosUsuarios);
-            res.statusCode = 200;
+            var retUsuarios = await Usuarios.findAll();
+            console.log(retUsuarios);
+            if (retUsuarios.length > 0)
+                res.status(200).send(todosUsuarios);
+
         } catch (error) {
-            res.send(error);
+            res.status(400).json({ Mensagem: error });
         }
     },
-    //criacao de usuario
     criarUsuario: async (req, res) => {
         try {
             var {
@@ -30,12 +30,11 @@ const UsuarioControllers =
                 email == '' || email == undefined || email == null ||
                 password == '' || password == undefined || password == null
             ) {
-                res.statusCode = 400;
-                res.send("Todos os campos precisam ser preenchidos!");
+                res.status(400).json({ Mensagem: "Todos os campos precisam ser preenchidos!" });
                 return;
             }
 
-            Usuarios.findAll({
+            var retUsuario = await Usuarios.findAll({
                 where: {
                     [Op.or]: [
                         { user: user },
@@ -43,43 +42,35 @@ const UsuarioControllers =
                         { nomeUsuario: nomeUsuario }
                     ]
                 }
-            }).then((value) => {
-                console.log('aaa' + value)
-                if (value.length >= 1) {
-                    res.statusCode = 200;
-                    res.send("Usuário já cadastrado!");
+            });
+
+            if (retUsuario) {
+                console.log(retUsuario);
+                if (retUsuario.length >= 1) {
+                    res.status(200).json({ Mensagem: "Usuário já cadastrado!" });
                     return;
                 }
                 else {
-                    Usuarios.create({
+                    var retUsuarioCriado = await Usuarios.create({
                         user: user,
                         nomeUsuario, nomeUsuario,
                         email: email,
                         password: password,
                         ultimoLogin: null,
                         logado: false,
-                    }).then(() => {
-                        res.statusCode = 200;
-                        res.send("Cadastro Realizado!");
-                        return;
-                    }).catch((error) => {
-                        res.statusCode = 400;
-                        res.send("Erro ao cadastrar usuário!");
-                        return;
                     });
+
+                    if (retUsuarioCriado) {
+                        res.status(200).json({ Mensagem: "Cadastro Realizado." });
+                        return;
+                    }
                 }
-            }).catch((error) => {
-                res.statusCode = 400;
-                res.send("Erro ao consultar Usuário!");
-                return;
-            });
+            };
         } catch (error) {
-            res.statusCode = 400;
-            res.send(error);
+            res.status(400).json({ Mensagem: 'Erro ao tentar realizar cadastro do usuário. Erro:' + error });
             return;
         }
     },
-    //login
     logon: async (req, res) => {
         try {
             var {
@@ -99,8 +90,6 @@ const UsuarioControllers =
 
                 if (retUsuario != undefined && retUsuario != null) {
                     var retJwt = jwt.sign({ id: retUsuario.id, email: retUsuario.email }, jwtSecret, { expiresIn: '2d' });
-                    console.log('-----> Token gerado:' + retJwt);
-                    console.log('-----> Update - Logar usuário');
 
                     var retLogin = await Usuarios.update({
                         ultimoLogin: new Date().toLocaleString(),
@@ -108,7 +97,6 @@ const UsuarioControllers =
                         tokenLogin: retJwt,
                     }, { where: { id: retUsuario.id } });
 
-                    console.log('-----> update ok');
 
                     if (retLogin !== undefined && retLogin !== null) {
                         res.status(200).json({
@@ -125,7 +113,6 @@ const UsuarioControllers =
             return;
         }
     },
-    //logout
     logout: async (req, res) => {
         try {
             var {
@@ -138,33 +125,31 @@ const UsuarioControllers =
                 return;
             }
             else {
-                Usuarios.findOne({
+                var retUsuario = Usuarios.findOne({
                     where: { user: user }
-                }).then((retUsuario) => {
-                    console.log(retUsuario);
+                });
+
+                if (retUsuario) {
                     if (retUsuario !== null) {
 
-                        Usuarios.update({
+                        var retUpdate = Usuarios.update({
                             ultimoLogin: new Date().toLocaleString(),
                             logado: false,
                             tokenLogin: retToken
                         },
-                            { where: { id: retUsuario.id } })
-                            .then(() => {
-                                res.send('Logout feito');
-                                res.statusCode = 200;
-                                return;
-                            })
+                            { where: { id: retUsuario.id } });
+                        if (retUpdate) {
+                            res.send({ Mensagem: 'Logout realizado' }).statusCode = 200;
+                            return;
+                        };
                     } else {
-                        res.send('Usuário não localizado');
-                        res.statusCode = 200;
+                        res.json({ Mensagem: 'Usuário não localizado' }).statusCode = 200;
                         return;
                     }
-                })
+                }
             }
         } catch (error) {
-            res.send(error);
-            res.statusCode = 400;
+            res.Json({ err: error }).statusCode = 400;
 
         }
     }

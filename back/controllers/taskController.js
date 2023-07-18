@@ -1,44 +1,40 @@
 const Task = require('../database/task');
+const EnumStatus = require('../enum/enum');
 
-const TaskController = {
+const taskController = {
     //obter uma lista com todas as tasks
-    tasks: (req, res) => {
+    tasks: (res) => {
         try {
-            Task.findAll({ raw: true, order: [["dataCadastro", "desc"]] })
-                .then((data) => {
-                    res.json(data);
-                    res.statusCode = 200;
-                })
-                .catch((error) => {
-                    res.send(error);
-                });
+            var retNovaTask = Task.findAll({ raw: true, order: [["dataCadastro", "desc"]] });
+            if (retNovaTask)
+                res.status(200).json(data);
+            else
+                res.status(500).json({ Mensagem: 'Falha ao tentar obter as tarefa' });
+
         } catch (error) {
-            res.send("Falha ao tentar recuperar as tasks. Erro: " + error);
+            res.status(500).send({ Mensagem: "Falha ao tentar recuperar as tasks. Erro: " + error });
         }
     },
     //obter uma unica task parametro id
     task: async (req, res) => {
         try {
-            if (isNaN(req.params.id)) {
-                res.sendStatus(400);
-            } else {
+            if (isNaN(req.params.id))
+                res.status(500).json({ Mensagem: 'É necessário informar o id da tarefa selecionada.' });
+            else {
                 var id = parseInt(req.params.id);
                 var retTask = await Task.findOne({ where: { id: id } });
-                {
-                    if (retTask == undefined) {
-                        res.sendStatus(404);
-                    } else {
-                        res.json(retTask);
-                        res.statusCode = 200;
-                    }
-                }
+
+                if (retTask === undefined)
+                    res.status(500).json({ Mensagem: 'Não foi localizada nenhuma tarefa.' });
+                else
+                    res.status(200).json(retTask);
+
             }
         } catch (error) {
-            res.send("Falha ao tentar recuperar os dados da task. Erro: " + error);
+            res.status(500).json({ Mensagem: "Falha ao tentar recuperar os dados da task. Erro: " + error });
         }
     },
-    //Criar uma task
-    NovaTask: (req, res) => {
+    novaTask: async (req, res) => {
         try {
             var {
                 titulo,
@@ -50,7 +46,7 @@ const TaskController = {
                 dataUltimaAlteracao,
             } = req.body;
 
-            Task.create({
+            var retTask = await Task.create({
                 titulo: titulo,
                 descricao: descricao,
                 status: status,
@@ -58,20 +54,19 @@ const TaskController = {
                 dataFinalizada: dataFinalizada,
                 dataMaximaExecutar: dataMaximaExecutar,
                 dataUltimaAlteracao: dataUltimaAlteracao,
-            })
-                .then(() => {
-                    res.sendStatus(200);
-                })
-                .catch((error) => {
-                    res.send(error);
-                });
+            });
+
+            if (retTask)
+                res.status(200).json({ Mensagem: 'Tarefa criada.' });
+            else
+                res.status(500).json({ Mensagem: 'Erro ao criar tarefa.' });
+
         } catch (erro) {
-            res.send("Falha ao tentar criar a nova task. Erro: " + erro);
+            res.status(500).json({ Mensagem: 'Erro ao criar tarefa. Erro: ' + erro });
         }
     },
-    //Atualiza uma task criada
-    atualizar: (req, res) => {
-        console.log('atualizar')
+    //atualiza uma task criada
+    atualizarTask: (req, res) => {
         try {
             var {
                 id,
@@ -84,7 +79,7 @@ const TaskController = {
                 dataUltimaAlteracao,
             } = req.body;
 
-            Task.update(
+            var retTaskUpdate = Task.update(
                 {
                     titulo: titulo,
                     descricao: descricao,
@@ -95,210 +90,198 @@ const TaskController = {
                     dataUltimaAlteracao: dataUltimaAlteracao,
                 },
                 { where: { id: id } }
-            )
-                .then(() => {
-                    res.sendStatus(200);
-                })
-                .catch((error) => {
-                    res.send(error);
-                });
+            );
+            if (retTaskUpdate)
+                res.status(200).json(retTaskUpdate);
+            else
+                res.status(500).send(error);
+
         } catch (erro) {
-            console.log('catch erro')
-            res.send("Falha ao tentar atualizar a nova task. Erro: " + erro);
+            res.status(500).send("Falha ao tentar atualizar a nova task. Erro: " + erro);
         }
     },
     //alterar estado de uma tarefa
-    // app.post("/task/alterarStatus/:id/:status", async (req, res) => {
     alterarStatus: async (req, res) => {
         try {
             if (!isNaN(req.params.id)) {
                 var id = req.params.id;
                 var status = req.params.status;
-                var objeto = {};
+                var task = {};
 
                 if (status == EnumStatus.finalizado) {
-                    objeto = {
+                    task = {
                         status: EnumStatus.finalizado,
                         dataFinalizada: new Date().toLocaleString(),
                         dataUltimaAlteracao: new Date().toLocaleString(),
                     };
                 } else {
-                    objeto = {
+                    task = {
                         status: status,
                         dataUltimaAlteracao: new Date().toLocaleString(),
                     };
                 }
 
-                var ret = await Task.update(objeto, {
+                var retUpdate = await Task.update(task, {
                     where: { id: id },
                 });
-                if (ret != undefined) {
-                    res.sendStatus(200);
-                } else {
-                    res.sendStatus(404);
-                }
-            } else {
-                res.sendStatus(400);
-            }
+
+                if (retUpdate !== undefined)
+                    res.status(200).json(retUpdate);
+                else
+                    res.status(400).json({ Mensagem: 'Falha ao tentar fazer upload' });
+
+            } else
+                res.status(400).json({ Mensagem: 'É necessário informar todos os parametros' });
+
         } catch (erro) {
-            res.send(erro);
+            res.status(500);
         }
     },
-    //pegar somente as tarefas pendentes - a fazer
+    //pegar somente as tarefas pendentes
     pendentes: async (res) => {
         try {
-            var ret = await Task.findAll({
+            var retPendentes = await Task.findAll({
                 where: { status: "1" },
                 order: [["ID", "DESC"]],
             });
 
-            if (ret != undefined) {
-                res.json(ret);
-                res.statusCode = 200;
-            } else {
-                res.sendStatus(404);
-            }
+            if (retPendentes !== undefined)
+                res.status(200).json(retPendentes);
+            else
+                res.status(500);
+
         } catch (erro) {
-            res.send(erro);
+            res.status(400).json({ Mensagem: erro });
         }
     },
     //pegar somente as tarefas nao finalizadas
-    naofinalizadas: async (req, res) => {
+    naoFinalizadas: async (res) => {
         try {
-            var ret = await Task.findAll({
+            var retNaoFinalizadas = await Task.findAll({
                 where: { status: "2" },
                 order: [["ID", "DESC"]],
             });
 
-            if (ret != undefined) {
-                res.json(ret);
-                res.statusCode = 200;
-            } else {
-                res.sendStatus(404);
-            }
+            if (retNaoFinalizadas !== undefined)
+                res.status(200).json(retNaoFinalizadas);
+            else
+                res.status(500).json({ Mensagem: 'Falha ao buscar tarefas não finalizadas' });
+
         } catch (erro) {
-            res.send(erro);
+            res.status(400).send(erro);
         }
     },
     //pegar somente as tarefas em execucao - fazendo
     emExecucao: async (req, res) => {
         try {
-            var ret = await Task.findAll({
+            var retTaskEmExecucao = await Task.findAll({
                 where: { status: "2" },
                 order: [["ID", "DESC"]],
             });
 
-            if (ret != undefined) {
-                res.json(ret);
-                res.statusCode = 200;
-            } else {
-                res.sendStatus(404);
-            }
+            if (retTaskEmExecucao !== undefined)
+                res.status(200).json(retTaskEmExecucao);
+            else
+                res.Status(404).json({ Mensagem: 'Falha ao buscar tarefas em execução' });
+
         } catch (erro) {
-            res.send(erro);
+            res.status(4000).json(erro);
         }
     },
     //pegar somente as tarefas finalizadas - feitas
     finalizadas: async (req, res) => {
         try {
-            var ret = await Task.findAll({
+            var retNaoFinalizadas = await Task.findAll({
                 where: { status: "3" },
                 order: [["ID", "DESC"]],
             });
 
-            if (ret != undefined) {
-                res.json(ret);
-                res.statusCode = 200;
-            } else {
-                res.sendStatus(404);
-            }
+            if (retNaoFinalizadas !== undefined)
+                res.status(200).json(retNaoFinalizadas);
+            else
+                res.status(500).json({ Mensagem: 'Falha ao buscar tarefas não finalizadas' });
+
         } catch (erro) {
-            res.send(erro);
+            res.status(400).json(erro);
         }
     },
     //pegas somente as tarefas em atraso
     emAtraso: async (req, res) => {
         try {
-            var ret = await Task.findAll({
+            var retTasksEmAtraso = await Task.findAll({
                 where: { status: "4" },
                 order: [["ID", "DESC"]],
             });
 
-            if (ret != undefined) {
-                res.json(ret);
-                res.statusCode = 200;
-            } else {
-                res.sendStatus(404);
-            }
+            if (retTasksEmAtraso !== undefined)
+                res.status(200).json(retTasksEmAtraso);
+            else
+                res.status(500).json({ Mensagem: 'Falha ao buscar tarefas em atraso' });
+
         } catch (erro) {
-            res.send(erro);
+            res.status(400).json(erro);
         }
     },
     //pegas somente as tarefas em canceladas
     canceladas: async (req, res) => {
         try {
-            var ret = await Task.findAll({
+            var retTasksCanceladas = await Task.findAll({
                 where: { status: "5" },
                 order: [["ID", "DESC"]],
             });
 
-            if (ret != undefined) {
-                res.json(ret);
-                res.statusCode = 200;
-            } else {
-                res.sendStatus(404);
-            }
+            if (retTasksCanceladas !== undefined)
+                res.status(200).json(retTasksCanceladas);
+            else
+                res.status(500).json({ Mensagem: 'Falha ao buscar tarefas canceladas' });
+
         } catch (erro) {
-            res.send(erro);
+            res.status(400).send(erro);
         }
     },
     //deleta uma task parametro id
-    deletarTask: (req, res) => {
+    deletarTask: async (req, res) => {
         try {
-            if (isNaN(req.params.id)) {
-                res.sendStatus(400);
-            } else {
+            if (isNaN(req.params.id))
+                res.status(400).json({ Mensagem: 'É necessário informar o paramêtro' });
+            else {
                 var id = parseInt(req.params.id);
-                Task.destroy({ where: { id: id } })
-                    .then(() => {
-                        res.sendStatus(200);
-                    })
-                    .catch((error) => {
-                        res.send(error);
-                    });
+                var retTaskDeletada = await Task.destroy({ where: { id: id } });
+                if (retTaskDeletada !== undefined)
+                    res.status(200).json(retTaskDeletada);
+                else
+                    res.status(500).json({ Mensagem: 'Falha ao buscar tarefas deletadas' });
             }
         } catch (error) {
-            res.send("Falha ao tentar recuperar as task. Erro: " + error);
+            res.status(400).json(error);
         }
     },
     //cancela uma task
-    cancelar: (req, res) => {
+    cancelar: async (req, res) => {
         try {
             var {
                 id,
-                status,
-                dataFinalizada,
                 dataUltimaAlteracao,
             } = req.body;
 
-            Task.update(
+            var retUpdate = await Task.update(
                 {
-                    status: status,
+                    status: EnumStatus.Cancelada,
                     dataFinalizada: dataFinalizada,
                     dataUltimaAlteracao: dataUltimaAlteracao,
                 },
                 { where: { id: id } }
-            )
-                .then(() => {
-                    res.sendStatus(200);
-                })
-                .catch((error) => {
-                    res.send(error);
-                });
+            );
+            if (retUpdate !== undefined) {
+                res.status(200).json(retUpdate);
+            }
+            else {
+                res.status(500).json({ Mensagem: 'Falha ao buscar tarefas canceladas' });
+            };
         } catch (erro) {
-            res.send("Falha ao tentar atualizar a nova task. Erro: " + erro);
+            res.status(400).json(erro);
         }
     }
 }
 
-module.exports = TaskController;
+module.exports = taskController;

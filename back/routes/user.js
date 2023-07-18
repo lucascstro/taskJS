@@ -4,7 +4,7 @@ const autenticacao = require('../middlewares/autenticacao');
 
 const router = express.Router();
 
-router.get('/obterUsuarios', autenticacao.validacaoToken,usuariosController.usuario);
+router.get('/obterUsuarios', autenticacao.validacaoToken,usuariosController.usuarios);
 router.post('/criarUsuario', autenticacao.validacaoToken,usuariosController.criarUsuario);
 router.post('/login',usuariosController.logon);
 router.post('/logout', autenticacao.validacaoToken,usuariosController.logout);
